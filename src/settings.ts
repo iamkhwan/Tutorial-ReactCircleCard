@@ -32,6 +32,7 @@ import DataViewObjectsParser = dataViewObjectsParser.DataViewObjectsParser;
 export class CircleSettings {
   public circleColor: string = "white";
   public circleThickness: number = 2;
+  public objectRules: any = null;
 }
 
 export class VisualSettings extends DataViewObjectsParser {

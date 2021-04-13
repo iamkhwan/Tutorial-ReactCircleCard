@@ -37,6 +37,10 @@ import EnumerateVisualObjectInstancesOptions = powerbi.EnumerateVisualObjectInst
 import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnumerationObject;
 import { VisualSettings } from "./settings";
 
+//Conditional Formatting
+import { dataViewWildcard } from "powerbi-visuals-utils-dataviewutils";
+import VisualEnumerationInstanceKinds = powerbi.VisualEnumerationInstanceKinds;
+
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import { ReactCircleCard, initialState } from "./component";
@@ -56,12 +60,29 @@ export class Visual implements IVisual {
         ReactDOM.render(this.reactRoot, this.target);
     }
 
+    private visualTransform = (dataView: DataView) => {
+        //Set default values before overrride with visual settings.
+        this.settings = VisualSettings.parse(dataView) as VisualSettings;
+
+        if (dataView) {
+            var metadata: any = dataView.metadata;
+            //Get color
+            if (metadata && metadata.objects && metadata.objects.circle && metadata.objects.circle.circleColor) {
+                this.settings.circle.circleColor = metadata.objects.circle.circleColor.solid.color;
+            }
+            //Check object range of colors
+            if (metadata && metadata.objectRules) {
+                this.settings.circle.objectRules = metadata.objectRules;
+            }
+        }
+    }
+
     public update(options: VisualUpdateOptions) {
         if (options.dataViews && options.dataViews[0]) {
             const dataView: DataView = options.dataViews[0];
-            this.viewport = options.viewport;
-            this.settings = VisualSettings.parse(dataView) as VisualSettings;
+            this.visualTransform(dataView);
 
+            this.viewport = options.viewport;
             const { width, height } = this.viewport;
             const size = Math.min(width, height);
             const object = this.settings.circle;
@@ -73,13 +94,39 @@ export class Visual implements IVisual {
                 borderWidth: object && object.circleThickness ? object.circleThickness : undefined,
                 background: object && object.circleColor ? object.circleColor : undefined,
             });
-        } else {
+        }
+        else {
             this.clear();
         }
     }
 
     public enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): VisualObjectInstance[] | VisualObjectInstanceEnumerationObject {
-        return VisualSettings.enumerateObjectInstances(this.settings || VisualSettings.getDefault(), options);
+        let objectName = options.objectName;
+        let objectEnumeration: VisualObjectInstance[] = [];
+
+        if (!this.settings ||
+            !this.settings.circle) {
+            return objectEnumeration;
+        }
+
+        switch (objectName) {
+            case 'circle':
+                objectEnumeration.push({
+                    objectName: objectName,
+                    properties: {
+                        circleColor: this.settings.circle.circleColor,
+                        circleThickness: this.settings.circle.circleThickness
+                    },
+                    propertyInstanceKind: {
+                        circleColor: VisualEnumerationInstanceKinds.ConstantOrRule
+                    },
+                    altConstantValueSelector: null,
+                    selector: dataViewWildcard.createDataViewWildcardSelector(dataViewWildcard.DataViewWildcardMatchingOption.InstancesAndTotals)
+                });
+                break;
+        };
+
+        return objectEnumeration;
     }
 
     private clear() {
