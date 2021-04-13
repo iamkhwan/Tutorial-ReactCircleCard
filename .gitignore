@@ -1,0 +1,9 @@
+# Dependency directories
+node_modules
+
+#temp
+.tmp/
+.tmp/*
+webpack.statistics.dev.html
+.DS_Store
+webpack.statistics.dev.html
